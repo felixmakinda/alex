@@ -30,7 +30,7 @@ def package_lambda():
     project_root = backend_dir.parent
     
     # Create a temporary directory for packaging
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp_dir:
         temp_path = Path(temp_dir)
         package_dir = temp_path / "package"
         package_dir.mkdir()
@@ -62,12 +62,14 @@ def package_lambda():
         docker_cmd = [
             "docker", "run", "--rm",
             "--platform", "linux/amd64",
+            "--user", f"{os.getuid()}:{os.getgid()}",
+            "-e", "HOME=/tmp",
             "-v", f"{temp_path}:/build",
             "-v", f"{backend_dir}/database:/database",
             "--entrypoint", "/bin/bash",
             "public.ecr.aws/lambda/python:3.12",
             "-c",
-            """cd /build && pip install --target ./package -r requirements.txt && pip install --target ./package --no-deps /database"""
+            """cd /build && pip install --no-cache-dir --target ./package -r requirements.txt && pip install --no-cache-dir --target ./package --no-deps /database"""
         ]
         
         run_command(docker_cmd)
